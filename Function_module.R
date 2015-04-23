@@ -136,7 +136,7 @@ ClassifyEmotion <- function(dtm, algorithm="bayes", prior=1.0, verbose=FALSE, ..
     
     best_fit <- names(scores)[which.max(unlist(scores))]
     if (best_fit == "disgust" && as.numeric(unlist(scores[2]))-3.09234 < .01) best_fit <- NA
-    documents <- rbind(documents, c(scores$anger, scores$disgust, scores$fear, scores$joy, scores$sadness, scores$surprise, best_fit))
+    documents <- rbind(documents, c(, best_fit))
   }
   
   colnames(documents) <- c(Index$V1[match(names(scores), Index$V2)], "BEST_FIT")
