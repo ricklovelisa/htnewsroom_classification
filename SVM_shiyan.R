@@ -1,9 +1,11 @@
-# library(RODBC)
+library(RODBC)
 library(rjson)
 library(jiebaR)
 library(tm)
 library(e1071)
 library(slam)
+
+source("Function_module.R", encoding = 'UTF-8')
 
 cutter <- worker()
 
@@ -41,6 +43,7 @@ list.content <- sapply(list.content, function(x) x[nchar(x) != 0])
 
 list.both <- sapply(c(1:length(data$id)), function(x) list(list(c(list.title[[x]], list.content[[x]]))))
 names(list.both) <- names(list.title)
+rm(list.title, list.content)
 
 corpus.both <- Corpus(VectorSource(list.both))
 for (i in 1:length(corpus.both)){
@@ -56,13 +59,75 @@ control.tf <- list(removePunctuation = T, stripWhitespace = T, wordLengths = c(2
 dtm.both <- DocumentTermMatrix(corpus.both, control.tf)
 dtm.both <- dtm.both[, -c(1:31347)]
 dtm.both <- dtm.both[row_sums(dtm.both) > 0, ]
-terms.tfidf <- tapply(dtm.both$v/row_sums(dtm.both)[dtm.both$i], dtm.both$j, mean) * log2(nDocs(dtm.both)/col_sums(dtm.both > 0))
-terms.idf <- log2(nDocs(dtm.both)/col_sums(dtm.both > 0))
 
 Category <- as.factor(sapply(rownames(dtm.both), function(x) strsplit(x, split = "_")[[1]][2]))
 
 dtm.both.tfidf <- weightTfIdf(dtm.both, normalize = F)
 
-aa <- tune('svm',  dtm.both.tfidf, Category, ranges = list(class.weights = c('1' = 0.9, '2' = 0.1), gamma = 10^(-6:-1), cost = 10^(-2:2)), tunecontrol = tune.control(sampling = 'cross', cross = 5))
+chisq <- ChisqareTest(dtm.both, Category, 0.05)
+rownames(chisq) <- Terms(dtm.both)
 
+aa <- chisq[chisq[,1] > 50, ]
+dtm.both.tfidf2 <- dtm.both.tfidf[, match(rownames(aa), Terms(dtm.both))]
+dtm.both.tfidf2 <- dtm.both.tfidf2[row_sums(dtm.both.tfidf2) > 0, ]
 
+Cate <- as.factor(sapply(rownames(dtm.both.tfidf2), function(x) strsplit(x, split = "_")[[1]][2]))
+
+SVM_model <- tune('svm',  dtm.both.tfidf2, Cate, ranges = list(class.weights = list(c('1' = 0.95, '2' = 0.05)), gamma = 10^(-6:-1), cost = 10^(-3:3)), kernel = 'radial', type = 'C-classification', tunecontrol = tune.control(sampling = 'cross', cross = 5))
+# SVM_model <- readRDS("SVM_model.rds")
+
+SVM <- svm(dtm.both.tfidf2, Cate, type = "C-classification", kernel = 'radial', class.weights = c('1' = 0.95, '2' = 0.05), gamma = SVM_model$best.parameters[2], cost = SVM_model$best.parameters[3], probability = T)
+
+# 整理测试集 #
+# mycon <- odbcConnect("3.96", "root", "123456")
+# data1 <- sqlQuery(mycon, paste("select id, title, content from article where id in (", as.String(c(33821,34929,34931,35127,35330,35857,36222,36532,36601,36613,36646,36900,37158,37197,37199,37259,37308,37312,37318,37325,37784,38164,38177,38332,38346,38649,38667,38684,38758,38790,38799,38855)), ")", sep = ""), stringsAsFactors = F)
+# data2 <- sqlQuery(mycon, "select article.id, article.title, article.content from article, article_classified where article.ID = article_classified.article_id and article_classified.category_id != 3 and article.ID > 30000 limit 1000", stringsAsFactors = F)
+# data2 <- data2[match(unique(data2$id), data2$id), ]
+# data2 <- data2[!(data2$id %in% data1$id), ]
+# data2 <- data2[match(sample(data2$id, 600), data2$id), ]
+# test <- rbind(data1,data2)
+# rm(data1, data2)
+
+test <- readRDS('test.rds')
+# test$category <- 2
+# test$category[1:32] <- 1
+# rownames(test) <- paste(test$id, "_", test$category, sep = "")
+# test$content <- gsub("<.*?>", "", test$content)
+test.title <- sapply(test$title, function(x) cutter[x])
+test.content <- sapply(test$content, function(x) cutter[x])
+
+names(test.title) <- rownames(test)
+names(test.content) <- rownames(test)
+
+test.title <- sapply(test.title, function(x) removePunctuation(removeWords(x, stopwordsCN)))
+test.content <- sapply(test.content, function(x) removePunctuation(removeWords(x, stopwordsCN)))
+
+test.title <- sapply(test.title, function(x) x[nchar(x) != 0])
+test.content <- sapply(test.content, function(x) x[nchar(x) != 0])
+
+test.both <- sapply(c(1:length(test$id)), function(x) list(list(c(test.title[[x]], test.content[[x]]))))
+names(test.both) <- names(test.title)
+rm(test.title, test.content)
+
+corpus.both <- Corpus(VectorSource(test.both))
+for (i in 1:length(corpus.both)){
+  corpus.both[[i]]$content <- sub("c", "", corpus.both[[i]]$content)
+  cat(i,"\n")
+}
+for (i in 1:length(corpus.both)){
+  meta(corpus.both[[i]], tag = 'id') <- names(test.both)[i]
+  cat(i,"\n")
+}
+
+control.tf <- list(removePunctuation = T, stripWhitespace = T, wordLengths = c(2, 10))
+test.both <- DocumentTermMatrix(corpus.both, control.tf)
+
+test.both2 <- MakePredDtm(test.both, dtm.both)
+test.both2 <- weightSameIDF(test.both2, dtm.both, normalize = F)
+test.both2 <- MakePredDtm(test.both2, dtm.both.tfidf2)
+# test.both2 <- test.both2[row_sums(test.both2) > 0, ]
+
+predict(SVM, test.both2)
+table(predict(SVM, test.both2))
+test.cate <- as.factor(sapply(rownames(test.both2), function(x) strsplit(x, split = "_")[[1]][2]))
+table(test.cate, predict(SVM, test.both2))

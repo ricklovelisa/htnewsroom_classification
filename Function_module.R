@@ -205,3 +205,38 @@ ClassifyPolarity <- function(dtm, file, algorithm="bayes", pstrong=0.5, pweak=1.
   colnames(documents) <- c("POS", "NEG", "POS/NEG", "BEST_FIT")
   return(documents)
 }
+
+
+
+
+
+
+
+
+
+# 根据原始矩阵计算目标矩阵的tfidf #
+weightSameIDF <-
+  WeightFunction(function(m, originDTM, normalize = TRUE) {
+    isDTM <- inherits(m, "DocumentTermMatrix")
+    isorginDTM <- inherits(originDTM, "DocumentTermMatrix")
+    if (isDTM) m <- t(m)
+    if (isorginDTM) originDTM <- t(originDTM)
+    if (normalize) {
+      cs <- col_sums(m)
+      if (any(cs == 0))
+        warning("empty document(s): ", paste(Docs(m)[cs == 0], collapse = " "))
+      names(cs) <- seq_len(nDocs(m))
+      m$v <- m$v / cs[m$j]
+    }
+    originrs <- row_sums(originDTM > 0)
+    if (any(originrs == 0))
+      warning("unreferenced term(s): ", paste(Terms(originDTM)[originrs == 0], collapse = " "))
+    originlnrs <- log2(nDocs(originDTM) /originrs)
+    originlnrs[!is.finite(originlnrs)] <- 0
+    m <- m * originlnrs
+    attr(m, "weighting") <- c(sprintf("%s%s",
+                                      "term frequency - inverse document frequency",
+                                      if (normalize) " (normalized)" else ""),
+                              "tf-idf")
+    if (isDTM) t(m) else m
+  }, "term frequency - inverse document frequency", "tf-idf")
