@@ -67,7 +67,7 @@ dtm.both.tfidf <- weightTfIdf(dtm.both, normalize = F)
 chisq <- ChisqareTest(dtm.both, Category, 0.05)
 rownames(chisq) <- Terms(dtm.both)
 
-aa <- chisq[chisq[,1] > 50, ]
+dims <- chisq[chisq[,1] > 50, ]
 dtm.both.tfidf2 <- dtm.both.tfidf[, match(rownames(aa), Terms(dtm.both))]
 dtm.both.tfidf2 <- dtm.both.tfidf2[row_sums(dtm.both.tfidf2) > 0, ]
 
