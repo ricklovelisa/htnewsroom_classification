@@ -1,23 +1,3 @@
-#####################################################################################################################################
-### custom function #################################################################################################################
-#####################################################################################################################################
-
-### 类别整合 ###
-identifyCategory <- function(x){
-  temp <- x[x != 0] %>>%
-    as.numeric %>>%
-    sort %>>%
-    unique %>>%
-    as.String %>>%
-    as.character %>>%
-    (gsub(', ', '\\|', .))
-  if(nchar(temp) == 0){temp <- -1}
-  return(temp)
-}
-
-
-
-
 # 将测试集和训练集统一 #
 MakePredDtm <- function(pred, dtm){ # weighting = "tf" 暂时不要用tfidf
   terms <- colnames(dtm[, which(!colnames(dtm) %in% colnames(pred))])
@@ -45,18 +25,20 @@ DocFreq <- function(dtm){
 
 # 支持dtm的卡方检验 #
 ChisqareTest <- function(dtm, label, prob){
-  chisq <- matrix(0, nrow = length(Terms(dtm)), ncol = length(unique(label)))
+  Category <- unique(label)
+  chisq <- data.frame(matrix(0, nrow = length(Terms(dtm)), ncol = length(Category)))
+  names(chisq) <- Category
   cate <- list()
-  for(i in 1:length(unique(label))){
+  for(i in 1:length(Category)){
     cate[[i]] <- label
-    cate[[i]] <- ifelse(cate[[i]] == unique(label)[i], unique(cate[[i]])[i], "other")
+    cate[[i]] <- ifelse(cate[[i]] == Category[i], Category[i], "-1")
   }
   size <- floor(quantile(1:length(Terms(dtm)), probs = seq(0, 1, prob)))
   
   # 计算第一个词 #
   terms <- as.matrix(dtm[, 1])
   terms[terms != 0] <- 1
-  for(j in 1:length(unique(label))){
+  for(j in 1:length(Category)){
     # terms[terms == 0] <- 2
     XsqMatrix <- table(terms, cate[[j]]) # confusion matrix
     chisq[1, j] <- chisq.test(XsqMatrix, correct = F)$statistic
@@ -71,7 +53,7 @@ ChisqareTest <- function(dtm, label, prob){
     for(k in 1:(size[n + 1] - (size[n] + 1) + 1)){
       terms <- terms.m[, k]
       terms[terms != 0] <- 1
-      for(j in 1:length(unique(label))){
+      for(j in 1:length(Category)){
         # terms[terms == 0] <- 2
         XsqMatrix <- table(terms, cate[[j]]) # confusion matrix
         chisq[k + i, j] <- chisq.test(XsqMatrix, correct = F)$statistic
@@ -85,8 +67,8 @@ ChisqareTest <- function(dtm, label, prob){
 
 # 情感分析 #
 ClassifyEmotion <- function(dtm, algorithm="bayes", prior=1.0, verbose=FALSE, ...) {
-  Index <- read.table("E:/R workspace/Git/lunwen/Sentiment/index_emotion.txt", header=F, stringsAsFactors = F, fileEncoding = "utf-8")
-  lexicon <- read.table("E:/R workspace/Git/lunwen/Sentiment/SentWords_emotion.txt", header=T, stringsAsFactors = F, fileEncoding = "utf-8")
+  Index <- read.table("index_emotion.txt", header=F, stringsAsFactors = F, fileEncoding = "utf-8")
+  lexicon <- read.table("SentWords_emotion.txt", header=T, stringsAsFactors = F, fileEncoding = "utf-8")
   counts <- c(as.list(table(lexicon$情感分类)))
   counts <- c(counts, total = nrow(lexicon))
   documents <- c()
@@ -97,20 +79,20 @@ ClassifyEmotion <- function(dtm, algorithm="bayes", prior=1.0, verbose=FALSE, ..
     scores <- as.list(matrix(0, nrow = n))
     names(scores) <- names(counts)[1:n]
     doc <- dtm[i, ]
-    words <- findFreqTerms(doc, lowfreq=1)
+    words <- findFreqTerms(doc, lowfreq = 1)
     
     for (word in words) {
       for (key in names(scores)) {
-        emotions <- lexicon[which(lexicon[, 2]==key), ]
-        index <- match(word, emotions[, 1], nomatch=0)
+        emotions <- lexicon[which(lexicon[, 2] == key), ]
+        index <- match(word, emotions[, 1], nomatch = 0)
         if (index > 0) {
           entry <- emotions[index, ]
           
           category <- as.character(entry[[2]])
           count <- counts[[category]]
           
-          score <- 1.0
-          if (algorithm=="bayes") score <- abs(log(score*prior/count))
+          score <- col_sums(dtm[i, word])
+          if (algorithm=="bayes") score <- abs(score*log(prior/count))
           
           if (verbose) {
             print(paste("WORD:", word, "CAT:", Index$V1[which(Index$V2 == category)], "SCORE:", score))
@@ -126,7 +108,7 @@ ClassifyEmotion <- function(dtm, algorithm="bayes", prior=1.0, verbose=FALSE, ..
         count <- counts[[key]]
         total <- counts[["total"]]
         score <- abs(log(count/total))
-        scores[[key]] <- scores[[key]]+score
+        scores[[key]] <- scores[[key]] + score
       }
     } else {
       for (key in names(scores)) {
@@ -135,27 +117,27 @@ ClassifyEmotion <- function(dtm, algorithm="bayes", prior=1.0, verbose=FALSE, ..
     }
     
     best_fit <- names(scores)[which.max(unlist(scores))]
-    if (best_fit == "disgust" && as.numeric(unlist(scores[2]))-3.09234 < .01) best_fit <- NA
-    documents <- rbind(documents, c(, best_fit))
+    best_fit <- Index[grep(best_fit, Index[, 2]), 1]
+    # if (best_fit == "disgust" && as.numeric(unlist(scores[2]))-3.09234 < .01) best_fit <- NA
+    documents <- rbind(documents, best_fit)
   }
   
-  colnames(documents) <- c(Index$V1[match(names(scores), Index$V2)], "BEST_FIT")
   return(documents)
 }
 
 
-## 还未修改完成 ##
 # 极性分析 #
-ClassifyPolarity <- function(dtm, file, algorithm="bayes", pstrong=0.5, pweak=1.0, prior=1.0, verbose=FALSE, ...) {
-  lexicon <- read.csv(system.file("data/subjectivity.csv.gz", package="sentiment"), header=FALSE)
+ClassifyPolarity <- function(dtm, algorithm="bayes", pstrong=0.5, pweak=1.0, prior=1.0, verbose=FALSE, ...) {
+  lexicon <- read.table("SentWords_PN.txt", header=T, stringsAsFactors = F, fileEncoding = "utf-8")
+  lexicon <- lexicon[lexicon[, 3] != 0, ]
   
   counts <- list(positive=length(which(lexicon[, 3]=="positive")), negative=length(which(lexicon[, 3]=="negative")), total=nrow(lexicon))
   documents <- c()
   
-  for (i in 1:nrow(matrix)) {
+  for (i in 1:nrow(dtm)) {
     if (verbose) print(paste("DOCUMENT", i))
     scores <- list(positive=0, negative=0)
-    doc <- matrix[i, ]
+    doc <- dtm[i, ]
     words <- findFreqTerms(doc, lowfreq=1)
     
     for (word in words) {
@@ -169,6 +151,7 @@ ClassifyPolarity <- function(dtm, file, algorithm="bayes", pstrong=0.5, pweak=1.
         
         score <- pweak
         if (polarity == "strongsubj") score <- pstrong
+        if (polarity == "midsubj") socre <- pmid
         if (algorithm=="bayes") score <- abs(log(score*prior/count))
         
         if (verbose) {
@@ -205,13 +188,6 @@ ClassifyPolarity <- function(dtm, file, algorithm="bayes", pstrong=0.5, pweak=1.
   colnames(documents) <- c("POS", "NEG", "POS/NEG", "BEST_FIT")
   return(documents)
 }
-
-
-
-
-
-
-
 
 
 # 根据原始矩阵计算目标矩阵的tfidf #
