@@ -207,7 +207,7 @@ weightSameIDF <-
     originrs <- row_sums(originDTM > 0)
     if (any(originrs == 0))
       warning("unreferenced term(s): ", paste(Terms(originDTM)[originrs == 0], collapse = " "))
-    originlnrs <- log2(nDocs(originDTM) /originrs)
+    originlnrs <- log2(nDocs(originDTM)/originrs)
     originlnrs[!is.finite(originlnrs)] <- 0
     m <- m * originlnrs
     attr(m, "weighting") <- c(sprintf("%s%s",
