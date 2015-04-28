@@ -62,7 +62,7 @@ control.tf <- list(removePunctuation = T, stripWhitespace = T, wordLengths = c(2
 dtm.both <- DocumentTermMatrix(corpus.both, control.tf)
 DocF <- DocFreq(dtm.both)
 dtm.both <- dtm.both[, DocF > 2]
-dtm.both <- dtm.both[, -c(1:6642)]
+# dtm.both <- dtm.both[, -c(1:6646)]
 # dtm.both <- dtm.both[, -c(1:166)]
 dtm.both <- dtm.both[row_sums(dtm.both) > 0, ]
 
@@ -70,9 +70,9 @@ Category <- as.factor(sapply(rownames(dtm.both), function(x) strsplit(x, split =
 
 dtm.both.tfidf <- weightTfIdf(dtm.both, normalize = T)
 
-# chisq <- ChisqareTest(dtm.both, Category, 0.1)
-# rownames(chisq) <- Terms(dtm.both)
-chisq <- readRDS('chisq.rds')
+chisq <- ChisqareTest(dtm.both, Category, 0.1)
+rownames(chisq) <- Terms(dtm.both)
+# chisq <- readRDS('chisq.rds')
 
 # dims <- chisq[chisq[,1] > 150, ]
 # dtm.both.tfidf2 <- dtm.both.tfidf[, match(rownames(dims), Terms(dtm.both))]
@@ -134,7 +134,7 @@ test.both <- DocumentTermMatrix(corpus.both, control.tf)
 
 # term_tfidf <- tapply(dtm.both$v/row_sums(dtm.both)[dtm.both$i], dtm.both$j, mean) * log2(nDocs(dtm.both)/col_sums(dtm.both > 0))
 # cont <- c((1:20)/200)
-cont <- c(50, 70, 90, 120, 150, 200)
+cont <- c(50, 100, 150, 160, 170, 180, 190, 200, 210, 220, 240, 250, 260)
 SVM_model <- list()
 SVM <- list()
 pred <- list()
@@ -151,7 +151,7 @@ for(i in 1:length(cont)){
   Cate <- as.factor(sapply(rownames(dtm.both.tfidf2), function(x) strsplit(x, split = "_")[[1]][2]))
   N <- length(Cate)
   # SVM_model <- tune('svm',  dtm.both.tf, Cate, ranges = list(class.weights = list(c('1' = 0.95, '2' = 0.05)), gamma = 10^(-6:-1), cost = 10^(-3:3)), kernel = 'radial', type = 'C-classification', tunecontrol = tune.control(sampling = 'cross', cross = 5))
-  SVM_model <- tune('svm',  dtm.both.tfidf2, Cate, ranges = list(class.weights = list(N/table(Cate)), scale = T, gamma = 10^(-6:-1), cost = 10^(-3:3)), kernel = 'radial', type = 'C-classification', tunecontrol = tune.control(sampling = 'fix'))
+  SVM_model <- tune('svm',  dtm.both.tfidf2, Cate, ranges = list(class.weights = list(N/table(Cate)), scale = T, gamma = 10^(-8:-1), cost = 10^(-4:4)), kernel = 'radial', type = 'C-classification', tunecontrol = tune.control(sampling = 'fix'))
   # SVM_model <- readRDS("SVM_model.rds")
   # SVM_model <- tune('svm',  dtm.both.tfidf2, Cate, ranges = list(nu = 2^(-5:-1), gamma = 10^(-6:-1), cost = 10^(-3:3)), kernel = 'radial', type = 'one-classification', tunecontrol = tune.control(sampling = 'fix'))
   
@@ -171,10 +171,10 @@ for(i in 1:length(cont)){
   cat(i,'\n')
 }
 
-TB <- sapply(c(1:6), function(x) list(table(pred[[x]], test.cate[[x]])[c(2,1), c(2,1)]))
+TB <- sapply(1:length(cont), function(x) list(table(pred[[x]], test.cate[[x]])[c(2,1), c(2,1)]))
 
-acc <- sapply(c(1:6), function(x) TB[[x]][1, 1]/sum(TB[[x]][1, ]))
-recall <- sapply(c(1:6), function(x) TB[[x]][1, 1]/sum(TB[[x]][, 1]))
+acc <- sapply(1:length(cont), function(x) TB[[x]][1, 1]/sum(TB[[x]][1, ]))
+recall <- sapply(1:length(cont), function(x) TB[[x]][1, 1]/sum(TB[[x]][, 1]))
 
 
 
