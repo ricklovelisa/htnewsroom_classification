@@ -9,18 +9,12 @@ library(slam)
 library(rjson)
 library(pipeR)
 library(rlist)
+library(jiebaR)
 source(paste(path.Function_module, "Function_module.R", sep = ""))
 
 ### 清理特征词 ###
 grep.keywords <- category$grep_keywords %>>% strsplit(split = ',')
 grep.keywords <- grep.keywords[!is.na(grep.keywords)]
-
-svm.feature.title <- list()
-svm.feature.content <- list()
-for(i in svmcate){
-  svm.feature.title[[i]] <- readLines(paste(path.feature.title, "category_feature_", i, "_title", sep = ""))
-  svm.feature.content[[i]] <- readLines(paste(path.feature.content, "category_feature_", i, "_content", sep = ""))
-}
 
 ### 清理无效字符 ###
 for(i in 2:length(test)){
@@ -62,134 +56,57 @@ rm(result, unclasstest, temp, mycon, i, j, grep.keywords, grepcate)
 
 
 
-### 提取训练集中每个类别中的文章id ###
-train <- read.csv(paste(path.train, "train.csv", sep = ""), stringsAsFactors = F)
-text.id <- list()
-for(i in svmcate){
-  text.id[[i]] <- train$ID[grep(paste("|", i, "|", sep = ""), train$Category, fixed = T)]
+### SVM分类 ###
+#### 正例测试集 ####
+cutter <- worker() #加载分词器
+stopwordsCN <- readLines("stopwordsCN.dic", encoding = 'UTF-8') #加载特定的停用词表
+
+rownames(test) <- test$ID
+test.title <- sapply(test$title, function(x) cutter[x]) 
+test.content <- sapply(test$content, function(x) cutter[x])
+
+names(test.title) <- rownames(test)
+names(test.content) <- rownames(test)
+
+test.title <- sapply(test.title, function(x) removePunctuation(removeWords(x, stopwordsCN)))
+test.content <- sapply(test.content, function(x) removePunctuation(removeWords(x, stopwordsCN)))
+
+test.title <- sapply(test.title, function(x) x[nchar(x) != 0])
+test.content <- sapply(test.content, function(x) x[nchar(x) != 0])
+
+test.both <- sapply(c(1:length(test$id)), function(x) list(list(c(test.title[[x]], test.content[[x]]))))
+names(test.both) <- names(test.title)
+rm(test.title, test.content)
+
+corpus.both <- Corpus(VectorSource(test.both))
+for (i in 1:length(corpus.both)){
+  corpus.both[[i]]$content <- sub("c", "", corpus.both[[i]]$content)
+  cat(i,"\n")
+}
+for (i in 1:length(corpus.both)){
+  meta(corpus.both[[i]], tag = 'id') <- names(test.both)[i]
+  cat(i,"\n")
 }
 
-### svm classify ###
+control.tf <- list(removePunctuation = T, stripWhitespace = T, wordLengths = c(2, 10))
+test.both <- DocumentTermMatrix(corpus.both, control.tf)
+ 
 
-## 建立语料库 ##
-# 测试集.list #
-test.list <- list()
-for (i in 1:length(test$ID)){
-  try(test.list[[i]] <- fromJSON(test$content_wordseg[i]), silent = T)
-}
-names(test.list) <- test$ID
-
-# 训练集.list #
-train.list <- list()
-for (i in 1:length(train$ID)){
-  try(train.list[[i]] <- fromJSON(train$content[i]), silent = T)
-}
-names(train.list) <- train$ID
-
-# 清理test中的空值并合并训练集和测试集 #
-test <- test[!sapply(test.list, is.null), ]
-test.list <- test.list[!sapply(test.list, is.null)]
-data.list <- c(train.list, test.list)
-
-# 清除无用变量 #
-rm(test.list, train.list)
-
-
-# SVM分类 #
-if(feature.switch == "title"){
-  ## title ##
-  # 数据集.标题 #
-  LIST <- list()
-  for (i in 1:length(data.list)){
-    LIST[[i]] <- data.list[[i]]$title
-    Encoding(LIST[[i]]) <- encode
-    LIST[[i]] <- strsplit(LIST[[i]], split = ',')
-  }
-  names(LIST) <- as.numeric(names(data.list))
-  
-  # 构建语料库 #
-  CORPUS <- Corpus(VectorSource(LIST), readerControl = list(language = "ZHCN"))
-  for (i in 1:length(CORPUS)){
-    CORPUS[[i]]$content <- sub("c", "", CORPUS[[i]]$content)
-  }
-  for (i in 1:length(CORPUS)){
-    meta(CORPUS[[i]], tag = 'id') <- as.numeric(names(LIST[i]))
-  }
-  
-  # 构建词频矩阵 #
-  control.tfidf <- list(removePunctuation = T, removeNumbers = F, stripWhitespace = T, wordLengths = c(2, 10), weighting = function(x)weightTfIdf(x, normalize = F))
-  DTM.tfidf <- DocumentTermMatrix(CORPUS, control.tfidf)
-  
-  for(SVM in svmcate){
-    # 词频矩阵根据svm.feature降维 #
-    FEATURE <- unlist(strsplit(svm.feature.title[[SVM]], split = ','))
-    termsid <- match(FEATURE, Terms(DTM.tfidf))
-    
-    # 构建VSM #
-    VSM <- as.data.frame(as.matrix(DTM.tfidf[, termsid]))
-    
-    # 添加标注 #
-    VSM$category <- 0
-    VSM$category[match(text.id[[SVM]], as.numeric(rownames(VSM)), nomatch = 0)] <- SVM
-    
-    # 区分训练集和测试集 #
-    VSM.train <- VSM[match(train$ID, as.numeric(rownames(VSM))), ]
-    VSM.test <- VSM[match(test$ID, as.numeric(rownames(VSM))), ]
-    
-    # SVM分类 #
-    SVM.model <- svm(as.factor(VSM.train$category)~., data = VSM.train, kernel = 'linear', type = 'C-classification', probability = T, tolerance = 0.0001)
-    pred <- ifelse(as.numeric(predict(SVM.model, VSM.test)) == 1, 0, SVM)
-    test <- cbind(test, pred)
-    cat('-------- 分类 ---', category$name[SVM], '--------\n')
-  }  
-}else if(feature.switch == "content"){
-  ## content ##
-  # 数据集.标题 #
-  LIST <- list()
-  for (i in 1:length(data.list)){
-    LIST[[i]] <- data.list[[i]]$content
-    Encoding(LIST[[i]]) <- encode
-    LIST[[i]] <- strsplit(LIST[[i]], split = ',')
-  }
-  names(LIST) <- as.numeric(names(data.list))
-  
-  # 构建语料库 #
-  CORPUS <- Corpus(VectorSource(LIST), readerControl = list(language = "ZHCN"))
-  for (i in 1:length(CORPUS)){
-    CORPUS[[i]]$content <- sub("c", "", CORPUS[[i]]$content)
-  }
-  for (i in 1:length(CORPUS)){
-    meta(CORPUS[[i]], tag = 'id') <- as.numeric(names(LIST[i]))
-  }
-  
-  # 构建词频矩阵 #
-  control.tfidf <- list(removePunctuation = T, removeNumbers = F, stripWhitespace = T, wordLengths = c(2, 10), weighting = function(x)weightTfIdf(x, normalize = F))
-  DTM.tfidf <- DocumentTermMatrix(CORPUS, control.tfidf)
-  
-  for(SVM in svmcate){
-    # 词频矩阵根据svm.feature降维 #
-    FEATURE <- unlist(strsplit(svm.feature.content[[SVM]], split = ','))
-    termsid <- match(FEATURE, Terms(DTM.tfidf))
-    
-    # 构建VSM #
-    VSM <- as.data.frame(as.matrix(DTM.tfidf[, termsid]))
-    
-    # 添加标注 #
-    VSM$category <- 0
-    VSM$category[match(text.id[[SVM]], as.numeric(rownames(VSM)), nomatch = 0)] <- SVM
-    
-    # 区分训练集和测试集 #
-    VSM.train <- VSM[match(train$ID, as.numeric(rownames(VSM))), ]
-    VSM.test <- VSM[match(test$ID, as.numeric(rownames(VSM))), ]
-    
-    # SVM分类 #
-    SVM.model <- svm(as.factor(VSM.train$category)~., data = VSM.train, kernel = 'linear', type = 'C-classification', probability = T, tolerance = 0.0001)
-    pred <- ifelse(as.numeric(predict(SVM.model, VSM.test)) == 1, 0, SVM)
-    test <- cbind(test, pred)
-    cat('-------- 分类 ---', category$name[SVM], '--------\n')
-  }  
+#### 加载模型并分类 ####
+for(i in svmgrep){
+  DTM <- readRDS(paste(path.model, "DTM_", i, sep = ""))
+  TEST <- MakePredDtm(test.both, DTM[[1]])
+  TEST <- weightSameIDF(TEST, DTM[[1]], normalize = T)
+  TEST <- MakePredDtm(TEST, DTM[[2]])
+  TEST <- TEST[row_sums(TEST) > 0, ]
+  SVM <- readRDS(paste(path.model, "SVM_", i, sep = ""))
+  PRED <- predict(SVM, TEST, probability = T)
+  PRED <- ifelse(PRED == 'ture', i, 0)
+  test <- cbind(test, PRED)
 }
 
-test$category <- apply(test[,-c(1:6)], identifyCategory, MARGIN = 1)
+
+test$category <- apply(test[,-c(1:4)], identifyCategory, MARGIN = 1)
 test$category_id <- paste("|", test$category, "|", sep = "")
+
 

@@ -21,8 +21,8 @@ path.feature.content <- "/home/qiuqiu/R_workspace/classify by topic/X-tfidf-svm/
 # JDBC驱动路径 #
 path.JDBC.driver <- "/home/qiuqiu/JDBC_driver/mysql-connector-java-5.1.7-bin.jar"
 
-# 训练集路径 #
-path.train <- "/home/qiuqiu/R_workspace/classify by topic/X-tfidf-svm/train/"
+# 模型路径 #
+path.model <- "/home/qiuqiu/R_workspace/Model/"
 
 ############
 ## DB配置 ##
@@ -33,7 +33,7 @@ JDBC.char <- "jdbc:mysql://172.16.3.96/htnewsroom"
 
 # 查询SQL #
 SQL.select.maxID <- "SELECT max(Article_id) FROM article_classified"
-SQL.select.test <- "SELECT ID, title, keywords, description, content_wordseg, site FROM article where ID > "
+SQL.select.test <- "SELECT ID, title, content, site FROM article where ID > "
 SQL.select.category <- "SELECT * from category"
 SQL.select.tag <- "SELECT id, name from htnewsroom.tag"
 
@@ -48,9 +48,6 @@ DB.psd <- "123456"
 
 # Encode #
 encode <- "UTF-8"
-
-# Feature switch #
-feature.switch <- 'title'
 
 # SVM分类类别 #
 svmcate <- c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
