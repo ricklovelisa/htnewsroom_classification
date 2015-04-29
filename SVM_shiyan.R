@@ -154,7 +154,7 @@ for(i in 1:length(cont)){
   Cate <- as.factor(sapply(rownames(dtm.both.tfidf), function(x) strsplit(x, split = "_")[[1]][2]))
   N <- length(Cate)
   # SVM_model <- tune('svm',  dtm.both.tf, Cate, ranges = list(class.weights = list(c('1' = 0.95, '2' = 0.05)), gamma = 10^(-6:-1), cost = 10^(-3:3)), kernel = 'radial', type = 'C-classification', tunecontrol = tune.control(sampling = 'cross', cross = 5))
-  SVM_model <- tune('svm',  dtm.both.tfidf, Cate, ranges = list(class.weights = list(N/table(Cate)), scale = T, gamma = 10^(-8:-1), cost = 10^(-4:4)), kernel = 'radial', type = 'C-classification', tunecontrol = tune.control(sampling = 'fix'))
+  SVM_model <- tune('svm',  dtm.both.tfidf, Cate, ranges = list(class.weights = list(N/table(Cate)), scale = T, gamma = 10^(-8:-1), cost = 10^(-4:4)), kernel = 'radial', type = 'C-classification', tunecontrol = tune.control(sampling = 'cross', cross = 5))
   # SVM_model <- readRDS("SVM_model.rds")
   # SVM_model <- tune('svm',  dtm.both.tfidf2, Cate, ranges = list(nu = 2^(-5:-1), gamma = 10^(-6:-1), cost = 10^(-3:3)), kernel = 'radial', type = 'one-classification', tunecontrol = tune.control(sampling = 'fix'))
   
@@ -168,7 +168,7 @@ for(i in 1:length(cont)){
   test.both2 <- weightSameIDF(test.both2[row_sums(test.both2) > 0, ], dtm.both.tfidf, normalize = T)
 
   # pred[[i]] <- predict(SVM[[i]], test.both2, probability = T)
-  pred[[i]] <- predict(SVM[[i]], test.both2)
+  pred[[i]] <- predict(SVM[[i]], test.both2, probability = T)
   test.cate[[i]] <- as.factor(sapply(rownames(test.both2), function(x) strsplit(x, split = "_")[[1]][2]))
   # test.cate <- as.factor(sapply(rownames(test.both2), function(x) strsplit(x, split = "_")[[1]][2]))
   cat(i,'\n')
@@ -178,7 +178,7 @@ TB <- sapply(1:length(cont), function(x) list(table(pred[[x]], test.cate[[x]])[c
 
 acc <- sapply(1:length(cont), function(x) TB[[x]][1, 1]/sum(TB[[x]][1, ]))
 recall <- sapply(1:length(cont), function(x) TB[[x]][1, 1]/sum(TB[[x]][, 1]))
-
+rbind(acc,recall)
 
 
 
