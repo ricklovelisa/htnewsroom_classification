@@ -31,7 +31,9 @@ data <- readRDS("Data/data.rds")
 # data <- data[data$category == 'ture', ] one-classification
 
 stopwordsCN <- readLines("stopwordsCN.dic", encoding = 'UTF-8')
-data$content <- gsub("<.*?>", "", data$content)
+data$content <- gsub("<.*?>", "", data$content, perl = T)
+data$content <- gsub("(f|ht)(tp)(s?)(://)(.*)[.|/]", "", data$content)
+data$content <- gsub("(www)(.*)[.|/]", "", data$content)
 list.title <- sapply(data$title, function(x) cutter[x])
 list.content <- sapply(data$content, function(x) cutter[x])
 
@@ -62,7 +64,7 @@ control.tf <- list(removePunctuation = T, stripWhitespace = T, wordLengths = c(2
 dtm.both <- DocumentTermMatrix(corpus.both, control.tf)
 DocF <- DocFreq(dtm.both)
 dtm.both <- dtm.both[, DocF > 2]
-dtm.both <- dtm.both[, -c(1:799,801:4175)]
+dtm.both <- dtm.both[, -c(1:567,569:3850)]
 # dtm.both <- dtm.both[, -c(1:6646)]
 # dtm.both <- dtm.both[, -c(1:166)]
 dtm.both <- dtm.both[row_sums(dtm.both) > 0, ]
@@ -135,40 +137,38 @@ test.both <- DocumentTermMatrix(corpus.both, control.tf)
 
 # term_tfidf <- tapply(dtm.both$v/row_sums(dtm.both)[dtm.both$i], dtm.both$j, mean) * log2(nDocs(dtm.both)/col_sums(dtm.both > 0))
 # cont <- c((1:20)/200)
-cont <- c(50, 100, 150, 170, 190, 210, 260)
+cont <- c(50, 100, 150, 170, 190, 210, 230, 250, 260)
 SVM_model <- list()
 SVM <- list()
 pred <- list()
 test.cate <- list()
+dtm.both.tfidf <- list()
 for(i in 1:length(cont)){
   words <- rownames(chisq)[chisq[,1] > cont[i]]
   # dtm.both.tf <- dtm.both[, match(rownames(dims), Terms(dtm.both))]
   # dtm.both.tf <- dtm.both.tf[row_sums(dtm.both.tf) > 0, ]
-  dtm.both.tfidf <- weightTfIdf(dtm.both, normalize = T)
-  dtm.both.tfidf <- dtm.both.tfidf[, match(words, Terms(dtm.both))]
-  dtm.both.tfidf <- dtm.both.tfidf[row_sums(dtm.both.tfidf) > 0, ]
-  # dtm.both.tfidf <- dtm.both[, match(words, Terms(dtm.both))]
-  # dtm.both.tfidf <- weightTfIdf(dtm.both.tfidf[row_sums(dtm.both.tfidf) > 0, ], normalize = T)
+  # dtm.both.tfidf2 <- dtm.both.tfidf[, match(words, Terms(dtm.both))]
+  # dtm.both.tfidf2 <- dtm.both.tfidf[, term_tfidf > cont[i]]
+  # dtm.both.tfidf2 <- dtm.both.tfidf2[row_sums(dtm.both.tfidf2) > 0, ]
+  dtm.both.tfidf[[i]] <- dtm.both[, match(words, Terms(dtm.both))]
+  dtm.both.tfidf[[i]] <- weightTfIdf(dtm.both.tfidf[[i]][row_sums(dtm.both.tfidf[[i]]) > 0, ], normalize = T)
 
   # Cate <- as.factor(sapply(rownames(dtm.both.tf), function(x) strsplit(x, split = "_")[[1]][2]))
-  Cate <- as.factor(sapply(rownames(dtm.both.tfidf), function(x) strsplit(x, split = "_")[[1]][2]))
+  Cate <- as.factor(sapply(rownames(dtm.both.tfidf[[i]]), function(x) strsplit(x, split = "_")[[1]][2]))
   N <- length(Cate)
   # SVM_model <- tune('svm',  dtm.both.tf, Cate, ranges = list(class.weights = list(c('1' = 0.95, '2' = 0.05)), gamma = 10^(-6:-1), cost = 10^(-3:3)), kernel = 'radial', type = 'C-classification', tunecontrol = tune.control(sampling = 'cross', cross = 5))
-  SVM_model <- tune('svm',  dtm.both.tfidf, Cate, ranges = list(class.weights = list(N/table(Cate)), scale = T, gamma = 10^(-8:-1), cost = 10^(-3:3)), kernel = 'radial', type = 'C-classification', tunecontrol = tune.control(sampling = 'fix'))
+  SVM_model <- tune('svm',  dtm.both.tfidf[[i]], Cate, ranges = list(class.weights = list(N/table(Cate)), gamma = 10^(-6:-1), cost = 10^(-3:3)), kernel = 'radial', type = 'C-classification', tunecontrol = tune.control(sampling = 'cross', cross = 5))
   # SVM_model <- readRDS("SVM_model.rds")
   # SVM_model <- tune('svm',  dtm.both.tfidf2, Cate, ranges = list(nu = 2^(-5:-1), gamma = 10^(-6:-1), cost = 10^(-3:3)), kernel = 'radial', type = 'one-classification', tunecontrol = tune.control(sampling = 'fix'))
   
   # SVM[[i]] <- svm(dtm.both.tf, Cate, type = "C-classification", kernel = 'radial', class.weights = c('1' = 0.95, '2' = 0.05), gamma = SVM_model$best.parameters[2], cost = SVM_model$best.parameters[3], probability = T)
   # SVM[[i]] <- svm(dtm.both.tfidf2, Cate, scale = T, type = "C-classification", kernel = 'radial', class.weights = N/table(Cate), gamma = SVM_model$best.parameters[2], cost = SVM_model$best.parameters[3], probability = T)
-  SVM[[i]] <- svm(dtm.both.tfidf, Cate, type = "C-classification", kernel = 'radial', class.weights = N/table(Cate), gamma = SVM_model$best.parameters$gamma, cost = SVM_model$best.parameter$cost)
+  SVM[[i]] <- svm(dtm.both.tfidf[[i]], Cate, type = "C-classification", kernel = 'radial', class.weights = N/table(Cate), gamma = SVM_model$best.parameters$gamma, cost = SVM_model$best.parameter$cost)
+  # test.both2 <- weightTfIdf(test.both, F)
+  # test.both2 <- MakePredDtm(test.both, dtm.both.tf)
   
-  test.both2 <- MakePredDtm(test.both, dtm.both)
-  test.both2 <- weightSameIDF(test.both2, dtm.both, normalize = T)
-  test.both2 <- MakePredDtm(test.both2, dtm.tfidf)
-  test.both2 <- test.both2[row_sums(test.both2) > 0, ]
-  
-  # test.both2 <- MakePredDtm(test.both, dtm.both.tfidf)
-  # test.both2 <- weightSameIDF(test.both2[row_sums(test.both2) > 0, ], dtm.both.tfidf, normalize = T)
+  test.both2 <- MakePredDtm(test.both, dtm.both.tfidf[[i]])
+  test.both2 <- weightSameIDF(test.both2[row_sums(test.both2) > 0, ], dtm.both.tfidf[[i]], normalize = T)
 
   # pred[[i]] <- predict(SVM[[i]], test.both2, probability = T)
   pred[[i]] <- predict(SVM[[i]], test.both2)
