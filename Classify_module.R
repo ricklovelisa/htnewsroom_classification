@@ -95,12 +95,10 @@ test.both <- DocumentTermMatrix(corpus.both, control.tf)
 #### 加载模型并分类 ####
 for(i in svmgrep){
   DTM <- readRDS(paste(path.model, "DTM_", i, sep = ""))
-  TEST <- MakePredDtm(test.both, DTM[[1]])
-  TEST <- weightSameIDF(TEST, DTM[[1]], normalize = T)
-  TEST <- MakePredDtm(TEST, DTM[[2]])
-  TEST <- TEST[row_sums(TEST) > 0, ]
+  TEST <- MakePredDtm(test.both, DTM[[i]])
+  TEST <- weightSameIDF(TEST[row_sums(TEST) > 0, ], DTM[[i]], normalize = F)
   SVM <- readRDS(paste(path.model, "SVM_", i, sep = ""))
-  PRED <- predict(SVM, TEST, probability = T)
+  PRED <- predict(SVM, TEST)
   PRED <- ifelse(PRED == 'ture', i, 0)
   test <- cbind(test, PRED)
 }
