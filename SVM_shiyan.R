@@ -138,7 +138,7 @@ test.both <- DocumentTermMatrix(corpus.both, control.tf)
 
 # term_tfidf <- tapply(dtm.both$v/row_sums(dtm.both)[dtm.both$i], dtm.both$j, mean) * log2(nDocs(dtm.both)/col_sums(dtm.both > 0))
 # cont <- c((1:20)/200)
-cont <- c(50, 100, 150, 170, 190, 210, 230, 250, 260)
+cont <- c(170, 190, 210, 220, 230, 240, 250, 260)
 SVM_model <- list()
 SVM <- list()
 pred <- list()
