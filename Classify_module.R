@@ -39,27 +39,16 @@ for(i in grepcate){
   unclasstest <- unclasstest[unclasstest$category_old == 0,]
 }
 
-for(i in grepcate){
-  #description匹配二级关键词
-  cat('-------', category$name[i], 'description匹配关键词-------\n')
-  temp <- list()
-  for(j in length(grep.keywords[[i]])){
-    temp[[j]] <- grep(grep.keywords[[i]][j], unclasstest$description)
-  }
-  unclasstest$category_old[unique(unlist(temp))] <- i
-  result <- unclasstest[unclasstest$category_old > 0, ]
-  test$category_old[match(result$ID, test$ID)] <- result$category_old
-  unclasstest <- unclasstest[unclasstest$category_old == 0,]
-}
-
 rm(result, unclasstest, temp, mycon, i, j, grep.keywords, grepcate)
 
 
 
 ### SVM分类 ###
 #### 正例测试集 ####
-cutter <- worker() #加载分词器
-stopwordsCN <- readLines("stopwordsCN.dic", encoding = 'UTF-8') #加载特定的停用词表
+# cutter <- worker() #加载分词器
+# stopwordsCN <- readLines("stopwordsCN.dic", encoding = 'UTF-8') #加载特定的停用词表
+
+
 
 rownames(test) <- test$ID
 test.title <- sapply(test$title, function(x) cutter[x]) 

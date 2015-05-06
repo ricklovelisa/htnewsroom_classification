@@ -33,7 +33,7 @@ JDBC.char <- "jdbc:mysql://172.16.3.96/htnewsroom"
 
 # 查询SQL #
 SQL.select.maxID <- "SELECT max(Article_id) FROM article_classified"
-SQL.select.test <- "SELECT ID, title, content, site FROM article where ID > "
+SQL.select.test <- "SELECT ID, title, content_wordseg, site FROM article where ID > "
 SQL.select.category <- "SELECT * from category"
 SQL.select.tag <- "SELECT id, name from htnewsroom.tag"
 
