@@ -111,7 +111,8 @@ test3<-test[grep("|3|",test$category_id,  fixed = T),]
 if(length(test3$ID) != 0){
   for(i in 1:length(keywords_3))
   {
-    test3$sum_key_freq[grep(keywords_3[i],test3$title)] <- 1+test3$sum_key_freq[grep(keywords_3[i],test3$title)]
+    # test3$sum_key_freq[grep(keywords_3[i],test3$title)] <- 1+test3$sum_key_freq[grep(keywords_3[i],test3$title)]
+    test3$sum_key_freq <- 1
   }
   
   test3$recommend_score<-paste(test3$recommend_score,"|",test3$sum_key_freq*3+test3$site_weigth,sep="")
