@@ -1,4 +1,4 @@
-# library(RODBC)
+library(RJDBC)
 library(rjson)
 library(jiebaR)
 library(tm)
@@ -7,13 +7,13 @@ library(slam)
 
 source("Function_module.R", encoding = 'UTF-8')
 
-cutter <- worker()
+# cutter <- worker()
 
-# id <- read.table("ecommerce_id.txt", stringsAsFactors = F)
+# id <- read.table("Data/zhinengshebei_id.txt", stringsAsFactors = F)
 
-# mycon <- odbcConnect("3.96", "root", "123456")
+# mycon <- odbcConnect("128.172", "root", "123456")
 # data1 <- sqlQuery(mycon, paste("select id, content_wordseg from article where id in (", id, ")", sep = ""), stringsAsFactors = F)
-# data2 <- sqlQuery(mycon, "select article.id, article.content_wordseg from article limit 4000", stringsAsFactors = F)
+# data2 <- sqlQuery(mycon, "select article.id, article.content_wordseg from article limit 3000", stringsAsFactors = F)
 
 # data2 <- data2[!(data2$id %in% data1$id), ]
 
@@ -25,20 +25,32 @@ cutter <- worker()
 # data$category[data$id %in% id] <- 1
 # data$category <- ifelse(data$category == 1, 'ture', 'false')
 # rownames(data) <- paste(data$id, "_", data$category, sep = "")
+# saveRDS(data, "Data/data_8.rds")
 
-data <- readRDS("Data/data.rds")
-# data$category[-c(1:175)] <- 'false'
+
+data <- readRDS("Data/data_8.rds")
+# data$category[-c(1:149)] <- 'false'
 # data <- data[data$category == 'ture', ] one-classification
 
 stopwordsCN <- readLines("stopwordsCN.dic", encoding = 'UTF-8')
-data$content <- gsub("<.*?>", "", data$content, perl = T)
-data$content <- gsub("(f|ht)(tp)(s?)(://)(.*)[.|/]", "", data$content, perl = T)
-data$content <- gsub("(www)(.*)[.|/]", "", data$content, perl = T)
-list.title <- sapply(data$title, function(x) cutter[x])
-list.content <- sapply(data$content, function(x) cutter[x])
+# data$content <- gsub("<.*?>", "", data$content, perl = T)
+# data$content <- gsub("(f|ht)(tp)(s?)(://)(.*)[.|/]", "", data$content, perl = T)
+# data$content <- gsub("(www)(.*)[.|/]", "", data$content, perl = T)
+# list.title <- sapply(data$title, function(x) cutter[x])
+# list.content <- sapply(data$content, function(x) cutter[x])
 
-names(list.title) <- rownames(data)
-names(list.content) <- rownames(data)
+# names(list.title) <- rownames(data)
+# names(list.content) <- rownames(data)
+
+data.list <- list()
+for(i in 1:length(data$ID)){
+  try(data.list[[i]] <- fromJSON(data$content_wordseg[i]), silent = T)
+}
+names(data.list) <- data$ID
+null.id <- sapply(data.list, function(x) is.null(x))
+data.list <- data.list[!null.id]
+
+
 
 list.title <- sapply(list.title, function(x) removePunctuation(removeWords(x, stopwordsCN)))
 list.content <- sapply(list.content, function(x) removePunctuation(removeWords(x, stopwordsCN)))
@@ -153,7 +165,7 @@ for(i in 1:length(cont)){
   # dtm.both.tfidf2 <- dtm.both.tfidf2[row_sums(dtm.both.tfidf2) > 0, ]
   dtm.both.tfidf[[i]] <- dtm.both[, match(words, Terms(dtm.both))]
   dtm.both.tfidf[[i]] <- weightTfIdf(dtm.both.tfidf[[i]][row_sums(dtm.both.tfidf[[i]]) > 0, ], normalize = F)
-
+  
   # Cate <- as.factor(sapply(rownames(dtm.both.tf), function(x) strsplit(x, split = "_")[[1]][2]))
   Cate <- as.factor(sapply(rownames(dtm.both.tfidf[[i]]), function(x) strsplit(x, split = "_")[[1]][2]))
   N <- length(Cate)
@@ -170,7 +182,7 @@ for(i in 1:length(cont)){
   
   test.both2 <- MakePredDtm(test.both, dtm.both.tfidf[[i]])
   test.both2 <- weightSameIDF(test.both2[row_sums(test.both2) > 0, ], dtm.both.tfidf[[i]], normalize = F)
-
+  
   # pred[[i]] <- predict(SVM[[i]], test.both2, probability = T)
   pred[[i]] <- predict(SVM[[i]], test.both2)
   test.cate[[i]] <- as.factor(sapply(rownames(test.both2), function(x) strsplit(x, split = "_")[[1]][2]))

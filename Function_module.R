@@ -216,3 +216,18 @@ weightSameIDF <-
                               "tf-idf")
     if (isDTM) t(m) else m
   }, "term frequency - inverse document frequency", "tf-idf")
+
+# 类别汇总算法 #
+identifyCategory <- function(x){
+  library(pipeR)
+  library(rlist)
+  temp <- x[x != 0] %>>%
+    as.numeric %>>%
+    sort %>>%
+    unique %>>%
+    as.String %>>%
+    as.character %>>%
+    (gsub(', ', '\\|', .))
+  if(nchar(temp) == 0){temp <- -1}
+  return(temp)
+}
