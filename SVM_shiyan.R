@@ -10,17 +10,13 @@ source("Function_module.R", encoding = 'UTF-8')
 # cutter <- worker()
 
 # id <- read.table("Data/zhinengshebei_id.txt", stringsAsFactors = F)
-
 # mycon <- odbcConnect("128.172", "root", "123456")
 # data1 <- sqlQuery(mycon, paste("select id, content_wordseg from article where id in (", id, ")", sep = ""), stringsAsFactors = F)
 # data2 <- sqlQuery(mycon, "select article.id, article.content_wordseg from article limit 3000", stringsAsFactors = F)
-
 # data2 <- data2[!(data2$id %in% data1$id), ]
-
 # data <- rbind(data1, data2)
 # rm(data1, data2)
 # id <- as.integer(strsplit(id$V1, split = ",")[[1]])
-
 # data$category <- 2
 # data$category[data$id %in% id] <- 1
 # data$category <- ifelse(data$category == 1, 'ture', 'false')
@@ -28,7 +24,24 @@ source("Function_module.R", encoding = 'UTF-8')
 # saveRDS(data, "Data/data_8.rds")
 
 
+jdbcdrv <- JDBC('com.mysql.jdbc.Driver', "/home/qiuqiu/JDBC_driver/mysql-connector-java-5.1.7-bin.jar")
+mycon <- dbConnect(jdbcdrv, "jdbc:mysql://172.16.128.172/htnewsroom", "root", "123456")
+id <- read.table("Data/zhinengshebei_id.txt", stringsAsFactors = F)
+data1 <- dbGetQuery(mycon, paste("select id, content_wordseg from article where id in (", id, ")", sep = ""))
+data2 <- dbGetQuery(mycon, "select article.id, article.content_wordseg from article limit 3000")
+data2 <- data2[!(data2$ID %in% data1$ID), ]
+data <- rbind(data1, data2)
+rm(data1, data2)
+id <- as.integer(strsplit(id$V1, split = ",")[[1]])
+data$category <- 2
+data$category[data$id %in% id] <- 1
+data$category <- ifelse(data$category == 1, 'ture', 'false')
+rownames(data) <- paste(data$ID, "_", data$category, sep = "")
+saveRDS(data, "Data/data_8.rds")
+
+
 data <- readRDS("Data/data_8.rds")
+Encoding(data$content_wordseg) <- 'UTF-8'
 # data$category[-c(1:149)] <- 'false'
 # data <- data[data$category == 'ture', ] one-classification
 
@@ -43,7 +56,7 @@ stopwordsCN <- readLines("stopwordsCN.dic", encoding = 'UTF-8')
 # names(list.content) <- rownames(data)
 
 data.list <- list()
-for(i in 1:length(data$ID)){
+for(i in 1:length(data$id)){
   try(data.list[[i]] <- fromJSON(data$content_wordseg[i]), silent = T)
 }
 names(data.list) <- data$ID
