@@ -23,25 +23,23 @@ source("Function_module.R", encoding = 'UTF-8')
 # rownames(data) <- paste(data$id, "_", data$category, sep = "")
 # saveRDS(data, "Data/data_8.rds")
 
-
-jdbcdrv <- JDBC('com.mysql.jdbc.Driver', "/home/qiuqiu/JDBC_driver/mysql-connector-java-5.1.7-bin.jar")
-mycon <- dbConnect(jdbcdrv, "jdbc:mysql://172.16.128.172/htnewsroom", "root", "123456")
-id <- read.table("Data/zhinengshebei_id.txt", stringsAsFactors = F)
-data1 <- dbGetQuery(mycon, paste("select id, content_wordseg from article where id in (", id, ")", sep = ""))
-data2 <- dbGetQuery(mycon, "select article.id, article.content_wordseg from article limit 3000")
-data2 <- data2[!(data2$ID %in% data1$ID), ]
-data <- rbind(data1, data2)
-rm(data1, data2)
-id <- as.integer(strsplit(id$V1, split = ",")[[1]])
-data$category <- 2
-data$category[data$id %in% id] <- 1
-data$category <- ifelse(data$category == 1, 'ture', 'false')
-rownames(data) <- paste(data$ID, "_", data$category, sep = "")
-saveRDS(data, "Data/data_8.rds")
+# jdbcdrv <- JDBC('com.mysql.jdbc.Driver', "/home/qiuqiu/JDBC_driver/mysql-connector-java-5.1.7-bin.jar")
+# mycon <- dbConnect(jdbcdrv, "jdbc:mysql://172.16.128.172/htnewsroom", "root", "123456")
+# id <- read.table("Data/zhinengshebei_id.txt", stringsAsFactors = F)
+# data1 <- dbGetQuery(mycon, paste("select id, content_wordseg from article where id in (", id, ")", sep = ""))
+# data2 <- dbGetQuery(mycon, "select article.id, article.content_wordseg from article limit 3000")
+# data2 <- data2[!(data2$ID %in% data1$ID), ]
+# data <- rbind(data1, data2)
+# rm(data1, data2)
+# id <- as.integer(strsplit(id$V1, split = ",")[[1]])
+# data$category <- 2
+# data$category[data$ID %in% id] <- 1
+# data$category <- ifelse(data$category == 1, 'ture', 'false')
+# rownames(data) <- paste(data$ID, "_", data$category, sep = "")
+# saveRDS(data, "Data/data_8.rds")
 
 
 data <- readRDS("Data/data_8.rds")
-Encoding(data$content_wordseg) <- 'UTF-8'
 # data$category[-c(1:149)] <- 'false'
 # data <- data[data$category == 'ture', ] one-classification
 
@@ -56,15 +54,16 @@ stopwordsCN <- readLines("stopwordsCN.dic", encoding = 'UTF-8')
 # names(list.content) <- rownames(data)
 
 data.list <- list()
-for(i in 1:length(data$id)){
+for(i in 1:length(data$ID)){
   try(data.list[[i]] <- fromJSON(data$content_wordseg[i]), silent = T)
+  cat(i,"\n")
 }
 names(data.list) <- rownames(data)
 null.id <- sapply(data.list, function(x) is.null(x))
 data.list <- data.list[!null.id]
 
-list.title <- sapply(data.list, function(x) {Encoding(x$title) <- 'gb2312'; strsplit(x$title, split = ',')})
-list.content <- sapply(data.list, function(x) {Encoding(x$content) <- 'gb2312'; strsplit(x$content, split = ',')})
+list.title <- sapply(data.list, function(x) strsplit(x$title, split = ','))
+list.content <- sapply(data.list, function(x) strsplit(x$content, split = ','))
 
 list.title <- sapply(list.title, function(x) removePunctuation(removeWords(x, stopwordsCN)))
 list.content <- sapply(list.content, function(x) removePunctuation(removeWords(x, stopwordsCN)))
@@ -124,14 +123,29 @@ rownames(chisq) <- Terms(dtm.both)
 # test <- rbind(data1,data2)
 # rm(data1, data2)
 
-# test <- readRDS('Data/test.rds')
-# # test$category[-c(1:32)] <- 'false'
-# # test$category <- ifelse(test$category == 1, 'ture', 'false')
-# # rownames(test) <- paste(test$id, "_", test$category, sep = "")
-# # test$category <- 2
-# # test$category[1:32] <- 1
-# # rownames(test) <- paste(test$id, "_", test$category, sep = "")
-# # test$content <- gsub("<.*?>", "", test$content)
+# jdbcdrv <- JDBC('com.mysql.jdbc.Driver', "/home/qiuqiu/JDBC_driver/mysql-connector-java-5.1.7-bin.jar")
+# mycon <- dbConnect(jdbcdrv, "jdbc:mysql://172.16.128.172/htnewsroom", "root", "123456")
+# id <- read.table("Data/zhinengshebei_id_test.txt", stringsAsFactors = F)
+# test1 <- dbGetQuery(mycon, paste("select id, content_wordseg from article where id in (", id, ")", sep = ""))
+# test2 <- dbGetQuery(mycon, "select article.id, article.content_wordseg from article where article.id > 100000 limit 1000")
+# test2 <- test2[!(test2$ID %in% test1$ID), ]
+# test <- rbind(test1, test2)
+# rm(test1, test2)
+# id <- as.integer(strsplit(id$V1, split = ",")[[1]])
+# test$category <- 2
+# test$category[test$ID %in% id] <- 1
+# test$category <- ifelse(test$category == 1, 'ture', 'false')
+# rownames(test) <- paste(test$ID, "_", test$category, sep = "")
+# saveRDS(test, "Data/test_8.rds")
+
+test <- readRDS('Data/test.rds')
+# test$category[-c(1:32)] <- 'false'
+# test$category <- ifelse(test$category == 1, 'ture', 'false')
+# rownames(test) <- paste(test$id, "_", test$category, sep = "")
+# test$category <- 2
+# test$category[1:32] <- 1
+# rownames(test) <- paste(test$id, "_", test$category, sep = "")
+# test$content <- gsub("<.*?>", "", test$content)
 # test.title <- sapply(test$title, function(x) cutter[x])
 # test.content <- sapply(test$content, function(x) cutter[x])
 
@@ -161,6 +175,40 @@ rownames(chisq) <- Terms(dtm.both)
 # control.tf <- list(removePunctuation = T, stripWhitespace = T, wordLengths = c(2, 10))
 # test.both <- DocumentTermMatrix(corpus.both, control.tf)
 
+test.list <- list()
+for(i in 1:length(test$ID)){
+  try(test.list[[i]] <- fromJSON(test$content_wordseg[i]), silent = T)
+  cat(i,"\n")
+}
+names(test.list) <- rownames(test)
+null.id <- sapply(test.list, function(x) is.null(x))
+test.list <- test.list[!null.id]
+
+list.title <- sapply(test.list, function(x) strsplit(x$title, split = ','))
+list.content <- sapply(test.list, function(x) strsplit(x$content, split = ','))
+
+list.title <- sapply(list.title, function(x) removePunctuation(removeWords(x, stopwordsCN)))
+list.content <- sapply(list.content, function(x) removePunctuation(removeWords(x, stopwordsCN)))
+
+list.title <- sapply(list.title, function(x) x[nchar(x) != 0])
+list.content <- sapply(list.content, function(x) x[nchar(x) != 0])
+
+list.both <- sapply(c(1:length(list.title)), function(x) list(list(c(list.title[[x]], list.content[[x]]))))
+names(list.both) <- names(list.title)
+rm(list.title, list.content)
+
+test.both <- test(VectorSource(list.both))
+for (i in 1:length(test.both)){
+  test.both[[i]]$content <- sub("c", "", test.both[[i]]$content)
+  cat(i,"\n")
+}
+for (i in 1:length(test.both)){
+  meta(test.both[[i]], tag = 'id') <- names(list.both)[i]
+  cat(i,"\n")
+}
+
+control.tf <- list(removePunctuation = T, stripWhitespace = T, wordLengths = c(2, 10))
+test.both <- DocumentTermMatrix(test.both, control.tf)
 
 # term_tfidf <- tapply(dtm.both$v/row_sums(dtm.both)[dtm.both$i], dtm.both$j, mean) * log2(nDocs(dtm.both)/col_sums(dtm.both > 0))
 # cont <- c((1:20)/200)
@@ -198,10 +246,8 @@ for(i in 1:length(cont)){
   # test.both2 <- weightSameIDF(test.both2[row_sums(test.both2) > 0, ], dtm.both.tfidf[[i]], normalize = F)
   
   # pred[[i]] <- predict(SVM[[i]], test.both2, probability = T)
-  # pred[[i]] <- predict(SVM[[i]], test.both2)
-  pred[[i]] <- fitted(SVM[[i]])
-  # test.cate[[i]] <- as.factor(sapply(rownames(test.both2), function(x) strsplit(x, split = "_")[[1]][2]))
-  test.cate[[i]] <- as.factor(sapply(rownames(dtm.both.tfidf[[i]]), function(x) strsplit(x, split = "_")[[1]][2]))
+  pred[[i]] <- predict(SVM[[i]], test.both2)
+  test.cate[[i]] <- as.factor(sapply(rownames(test.both2), function(x) strsplit(x, split = "_")[[1]][2]))
   # test.cate <- as.factor(sapply(rownames(test.both2), function(x) strsplit(x, split = "_")[[1]][2]))
   cat(i,'\n')
 }
