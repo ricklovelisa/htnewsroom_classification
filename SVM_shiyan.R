@@ -59,11 +59,12 @@ data.list <- list()
 for(i in 1:length(data$id)){
   try(data.list[[i]] <- fromJSON(data$content_wordseg[i]), silent = T)
 }
-names(data.list) <- data$ID
+names(data.list) <- rownames(data)
 null.id <- sapply(data.list, function(x) is.null(x))
 data.list <- data.list[!null.id]
 
-
+list.title <- sapply(data.list, function(x) {Encoding(x$title) <- 'gb2312'; strsplit(x$title, split = ',')})
+list.content <- sapply(data.list, function(x) {Encoding(x$content) <- 'gb2312'; strsplit(x$content, split = ',')})
 
 list.title <- sapply(list.title, function(x) removePunctuation(removeWords(x, stopwordsCN)))
 list.content <- sapply(list.content, function(x) removePunctuation(removeWords(x, stopwordsCN)))
@@ -71,7 +72,7 @@ list.content <- sapply(list.content, function(x) removePunctuation(removeWords(x
 list.title <- sapply(list.title, function(x) x[nchar(x) != 0])
 list.content <- sapply(list.content, function(x) x[nchar(x) != 0])
 
-list.both <- sapply(c(1:length(data$id)), function(x) list(list(c(list.title[[x]], list.content[[x]]))))
+list.both <- sapply(c(1:length(list.title)), function(x) list(list(c(list.title[[x]], list.content[[x]]))))
 names(list.both) <- names(list.title)
 rm(list.title, list.content)
 
@@ -123,47 +124,47 @@ rownames(chisq) <- Terms(dtm.both)
 # test <- rbind(data1,data2)
 # rm(data1, data2)
 
-test <- readRDS('Data/test.rds')
-# test$category[-c(1:32)] <- 'false'
-# test$category <- ifelse(test$category == 1, 'ture', 'false')
-# rownames(test) <- paste(test$id, "_", test$category, sep = "")
-# test$category <- 2
-# test$category[1:32] <- 1
-# rownames(test) <- paste(test$id, "_", test$category, sep = "")
-# test$content <- gsub("<.*?>", "", test$content)
-test.title <- sapply(test$title, function(x) cutter[x])
-test.content <- sapply(test$content, function(x) cutter[x])
+# test <- readRDS('Data/test.rds')
+# # test$category[-c(1:32)] <- 'false'
+# # test$category <- ifelse(test$category == 1, 'ture', 'false')
+# # rownames(test) <- paste(test$id, "_", test$category, sep = "")
+# # test$category <- 2
+# # test$category[1:32] <- 1
+# # rownames(test) <- paste(test$id, "_", test$category, sep = "")
+# # test$content <- gsub("<.*?>", "", test$content)
+# test.title <- sapply(test$title, function(x) cutter[x])
+# test.content <- sapply(test$content, function(x) cutter[x])
 
-names(test.title) <- rownames(test)
-names(test.content) <- rownames(test)
+# names(test.title) <- rownames(test)
+# names(test.content) <- rownames(test)
 
-test.title <- sapply(test.title, function(x) removePunctuation(removeWords(x, stopwordsCN)))
-test.content <- sapply(test.content, function(x) removePunctuation(removeWords(x, stopwordsCN)))
+# test.title <- sapply(test.title, function(x) removePunctuation(removeWords(x, stopwordsCN)))
+# test.content <- sapply(test.content, function(x) removePunctuation(removeWords(x, stopwordsCN)))
 
-test.title <- sapply(test.title, function(x) x[nchar(x) != 0])
-test.content <- sapply(test.content, function(x) x[nchar(x) != 0])
+# test.title <- sapply(test.title, function(x) x[nchar(x) != 0])
+# test.content <- sapply(test.content, function(x) x[nchar(x) != 0])
 
-test.both <- sapply(c(1:length(test$id)), function(x) list(list(c(test.title[[x]], test.content[[x]]))))
-names(test.both) <- names(test.title)
-rm(test.title, test.content)
+# test.both <- sapply(c(1:length(test$id)), function(x) list(list(c(test.title[[x]], test.content[[x]]))))
+# names(test.both) <- names(test.title)
+# rm(test.title, test.content)
 
-corpus.both <- Corpus(VectorSource(test.both))
-for (i in 1:length(corpus.both)){
-  corpus.both[[i]]$content <- sub("c", "", corpus.both[[i]]$content)
-  cat(i,"\n")
-}
-for (i in 1:length(corpus.both)){
-  meta(corpus.both[[i]], tag = 'id') <- names(test.both)[i]
-  cat(i,"\n")
-}
+# corpus.both <- Corpus(VectorSource(test.both))
+# for (i in 1:length(corpus.both)){
+#   corpus.both[[i]]$content <- sub("c", "", corpus.both[[i]]$content)
+#   cat(i,"\n")
+# }
+# for (i in 1:length(corpus.both)){
+#   meta(corpus.both[[i]], tag = 'id') <- names(test.both)[i]
+#   cat(i,"\n")
+# }
 
-control.tf <- list(removePunctuation = T, stripWhitespace = T, wordLengths = c(2, 10))
-test.both <- DocumentTermMatrix(corpus.both, control.tf)
+# control.tf <- list(removePunctuation = T, stripWhitespace = T, wordLengths = c(2, 10))
+# test.both <- DocumentTermMatrix(corpus.both, control.tf)
 
 
 # term_tfidf <- tapply(dtm.both$v/row_sums(dtm.both)[dtm.both$i], dtm.both$j, mean) * log2(nDocs(dtm.both)/col_sums(dtm.both > 0))
 # cont <- c((1:20)/200)
-cont <- c(170, 190, 210, 220, 230, 240, 250, 260)
+cont <- c(50, 100, 120, 140, 160, 190, 210, 220, 230, 240, 250, 260)
 SVM_model <- list()
 SVM <- list()
 pred <- list()
@@ -193,12 +194,14 @@ for(i in 1:length(cont)){
   # test.both2 <- weightTfIdf(test.both, F)
   # test.both2 <- MakePredDtm(test.both, dtm.both.tf)
   
-  test.both2 <- MakePredDtm(test.both, dtm.both.tfidf[[i]])
-  test.both2 <- weightSameIDF(test.both2[row_sums(test.both2) > 0, ], dtm.both.tfidf[[i]], normalize = F)
+  # test.both2 <- MakePredDtm(test.both, dtm.both.tfidf[[i]])
+  # test.both2 <- weightSameIDF(test.both2[row_sums(test.both2) > 0, ], dtm.both.tfidf[[i]], normalize = F)
   
   # pred[[i]] <- predict(SVM[[i]], test.both2, probability = T)
-  pred[[i]] <- predict(SVM[[i]], test.both2)
-  test.cate[[i]] <- as.factor(sapply(rownames(test.both2), function(x) strsplit(x, split = "_")[[1]][2]))
+  # pred[[i]] <- predict(SVM[[i]], test.both2)
+  pred[[i]] <- fitted(SVM[[i]])
+  # test.cate[[i]] <- as.factor(sapply(rownames(test.both2), function(x) strsplit(x, split = "_")[[1]][2]))
+  test.cate[[i]] <- as.factor(sapply(rownames(dtm.both.tfidf[[i]]), function(x) strsplit(x, split = "_")[[1]][2]))
   # test.cate <- as.factor(sapply(rownames(test.both2), function(x) strsplit(x, split = "_")[[1]][2]))
   cat(i,'\n')
 }
