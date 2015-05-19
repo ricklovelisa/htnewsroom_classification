@@ -9,7 +9,7 @@ source("Function_module.R", encoding = 'UTF-8')
 
 # cutter <- worker()
 
-# id <- read.table("Data/zhinengshebei_id.txt", stringsAsFactors = F)
+# id <- read.table("Data/ecommerce_id.txt", stringsAsFactors = F)
 # mycon <- odbcConnect("128.172", "root", "123456")
 # data1 <- sqlQuery(mycon, paste("select id, content_wordseg from article where id in (", id, ")", sep = ""), stringsAsFactors = F)
 # data2 <- sqlQuery(mycon, "select article.id, article.content_wordseg from article limit 3000", stringsAsFactors = F)
@@ -25,7 +25,7 @@ source("Function_module.R", encoding = 'UTF-8')
 
 # jdbcdrv <- JDBC('com.mysql.jdbc.Driver', "/home/qiuqiu/JDBC_driver/mysql-connector-java-5.1.7-bin.jar")
 # mycon <- dbConnect(jdbcdrv, "jdbc:mysql://172.16.128.172/htnewsroom", "root", "123456")
-# id <- read.table("Data/zhinengshebei_id.txt", stringsAsFactors = F)
+# id <- read.table("Data/info_safety_id.txt", stringsAsFactors = F)
 # data1 <- dbGetQuery(mycon, paste("select id, content_wordseg from article where id in (", id, ")", sep = ""))
 # data2 <- dbGetQuery(mycon, "select article.id, article.content_wordseg from article limit 3000")
 # data2 <- data2[!(data2$ID %in% data1$ID), ]
@@ -36,10 +36,10 @@ source("Function_module.R", encoding = 'UTF-8')
 # data$category[data$ID %in% id] <- 1
 # data$category <- ifelse(data$category == 1, 'ture', 'false')
 # rownames(data) <- paste(data$ID, "_", data$category, sep = "")
-# saveRDS(data, "Data/data_8.rds")
+# saveRDS(data, "Data/data_7.rds")
 
 
-data <- readRDS("Data/data_8.rds")
+data <- readRDS("Data/data_7.rds")
 # data$category[-c(1:149)] <- 'false'
 # data <- data[data$category == 'ture', ] one-classification
 
@@ -125,10 +125,11 @@ rownames(chisq) <- Terms(dtm.both)
 
 # jdbcdrv <- JDBC('com.mysql.jdbc.Driver', "/home/qiuqiu/JDBC_driver/mysql-connector-java-5.1.7-bin.jar")
 # mycon <- dbConnect(jdbcdrv, "jdbc:mysql://172.16.128.172/htnewsroom", "root", "123456")
-# id <- read.table("Data/zhinengshebei_id_test.txt", stringsAsFactors = F)
+# id <- read.table("Data/info_safety_test_id.txt", stringsAsFactors = F)
 # test1 <- dbGetQuery(mycon, paste("select id, content_wordseg from article where id in (", id, ")", sep = ""))
-# test2 <- dbGetQuery(mycon, "select article.id, article.content_wordseg from article where article.id > 100000 limit 1000")
+# test2 <- dbGetQuery(mycon, "select article.id, article.content_wordseg from article, article_classified where article.id > 10000 and article.id = article_classified.article_id and article_classified.category_id != 7 limit 1600")
 # test2 <- test2[!(test2$ID %in% test1$ID), ]
+# test2 <- test2[!duplicated(test2$ID), ]
 # test <- rbind(test1, test2)
 # rm(test1, test2)
 # id <- as.integer(strsplit(id$V1, split = ",")[[1]])
@@ -136,9 +137,9 @@ rownames(chisq) <- Terms(dtm.both)
 # test$category[test$ID %in% id] <- 1
 # test$category <- ifelse(test$category == 1, 'ture', 'false')
 # rownames(test) <- paste(test$ID, "_", test$category, sep = "")
-# saveRDS(test, "Data/test_8.rds")
+# saveRDS(test, "Data/test_7.rds")
 
-test <- readRDS('Data/test.rds')
+test <- readRDS('Data/test_7.rds')
 # test$category[-c(1:32)] <- 'false'
 # test$category <- ifelse(test$category == 1, 'ture', 'false')
 # rownames(test) <- paste(test$id, "_", test$category, sep = "")
@@ -197,7 +198,7 @@ list.both <- sapply(c(1:length(list.title)), function(x) list(list(c(list.title[
 names(list.both) <- names(list.title)
 rm(list.title, list.content)
 
-test.both <- test(VectorSource(list.both))
+test.both <- Corpus(VectorSource(list.both))
 for (i in 1:length(test.both)){
   test.both[[i]]$content <- sub("c", "", test.both[[i]]$content)
   cat(i,"\n")
@@ -212,7 +213,7 @@ test.both <- DocumentTermMatrix(test.both, control.tf)
 
 # term_tfidf <- tapply(dtm.both$v/row_sums(dtm.both)[dtm.both$i], dtm.both$j, mean) * log2(nDocs(dtm.both)/col_sums(dtm.both > 0))
 # cont <- c((1:20)/200)
-cont <- c(50, 100, 120, 140, 160, 190, 210, 220, 230, 240, 250, 260)
+cont <- c(100,150,200,250,300,350,400,450,500)
 SVM_model <- list()
 SVM <- list()
 pred <- list()
@@ -242,8 +243,8 @@ for(i in 1:length(cont)){
   # test.both2 <- weightTfIdf(test.both, F)
   # test.both2 <- MakePredDtm(test.both, dtm.both.tf)
   
-  # test.both2 <- MakePredDtm(test.both, dtm.both.tfidf[[i]])
-  # test.both2 <- weightSameIDF(test.both2[row_sums(test.both2) > 0, ], dtm.both.tfidf[[i]], normalize = F)
+  test.both2 <- MakePredDtm(test.both, dtm.both.tfidf[[i]])
+  test.both2 <- weightSameIDF(test.both2[row_sums(test.both2) > 0, ], dtm.both.tfidf[[i]], normalize = F)
   
   # pred[[i]] <- predict(SVM[[i]], test.both2, probability = T)
   pred[[i]] <- predict(SVM[[i]], test.both2)
@@ -257,30 +258,4 @@ TB <- sapply(1:length(cont), function(x) list(table(pred[[x]], test.cate[[x]])[c
 acc <- sapply(1:length(cont), function(x) TB[[x]][1, 1]/sum(TB[[x]][1, ]))
 recall <- sapply(1:length(cont), function(x) TB[[x]][1, 1]/sum(TB[[x]][, 1]))
 rbind(acc,recall)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-test.both2 <- MakePredDtm(test.both, dtm.both)
-test.both2 <- weightSameIDF(test.both2, dtm.both, normalize = F)
-test.both2 <- MakePredDtm(test.both2, dtm.both.tfidf2)
-test.both2 <- test.both2[row_sums(test.both2) > 0, ]
-
-predict(SVM, test.both2)
-table(predict(SVM, test.both2))
-test.cate <- as.factor(sapply(rownames(test.both2), function(x) strsplit(x, split = "_")[[1]][2]))
-table(predict(SVM, test.both2), test.cate)
-
 

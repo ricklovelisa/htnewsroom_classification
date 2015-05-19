@@ -88,6 +88,7 @@ if(length(test1$ID) != 0){
   }
   test1$recommend_score<-paste(test1$recommend_score,"|",test1$sum_key_freq*3+test1$site_weigth,sep="")
   dd<-subset(test, !(test$ID %in% test1$ID))
+  names(dd) <- names(test1)
   test<-rbind(test1,dd)
 }
 test$sum_key_freq <- 0
@@ -102,6 +103,7 @@ if(length(test2$ID) != 0){
   
   test2$recommend_score<-paste(test2$recommend_score,"|",test2$sum_key_freq*3+test2$site_weigth,sep="")
   dd<-subset(test, !(test$ID %in% test2$ID))
+  names(dd) <- names(test2)
   test<-rbind(test2,dd)
 }
 test$sum_key_freq <- 0
@@ -117,6 +119,7 @@ if(length(test3$ID) != 0){
   
   test3$recommend_score<-paste(test3$recommend_score,"|",test3$sum_key_freq*3+test3$site_weigth,sep="")
   dd<-subset(test, !(test$ID %in% test3$ID))
+  names(dd) <- names(test3)
   test<-rbind(test3,dd)
 }
 test$sum_key_freq <- 0
@@ -131,6 +134,7 @@ if(length(test4$ID) != 0){
   
   test4$recommend_score<-paste(test4$recommend_score,"|",test4$sum_key_freq*3+test4$site_weigth,sep="")
   dd<-subset(test, !(test$ID %in% test4$ID))
+  names(dd) <- names(test4)
   test<-rbind(test4,dd)
 }
 test$sum_key_freq <- 0
@@ -145,6 +149,7 @@ if(length(test5$ID) != 0){
   
   test5$recommend_score<-paste(test5$recommend_score,"|",test5$sum_key_freq*3+test5$site_weigth,sep="")
   dd<-subset(test, !(test$ID %in% test5$ID))
+  names(dd) <- names(test5)
   test<-rbind(test5,dd)
 }
 test$sum_key_freq <- 0
@@ -159,6 +164,7 @@ if(length(test6$ID) != 0){
   
   test6$recommend_score<-paste(test6$recommend_score,"|",test6$sum_key_freq*3+test6$site_weigth,sep="")
   dd<-subset(test, !(test$ID %in% test6$ID))
+  names(dd) <- names(test6)
   test<-rbind(test6,dd)
 }
 test$sum_key_freq <- 0
@@ -173,6 +179,7 @@ if(length(test7$ID) != 0){
   
   test7$recommend_score<-paste(test7$recommend_score,"|",test7$sum_key_freq*3+test7$site_weigth,sep="")
   dd<-subset(test, !(test$ID %in% test7$ID))
+  names(dd) <- names(test7)
   test<-rbind(test7,dd)
 }
 test$sum_key_freq <- 0
@@ -187,6 +194,7 @@ if(length(test8$ID) != 0){
   
   test8$recommend_score<-paste(test8$recommend_score,"|",test8$sum_key_freq*3+test8$site_weigth,sep="")
   dd<-subset(test, !(test$ID %in% test8$ID))
+  names(dd) <- names(test8)
   test<-rbind(test8,dd)
 }
 test$sum_key_freq <- 0
@@ -201,6 +209,7 @@ if(length(test9$ID) != 0){
   
   test9$recommend_score<-paste(test9$recommend_score,"|",test9$sum_key_freq*3+test9$site_weigth,sep="")
   dd<-subset(test, !(test$ID %in% test9$ID))
+  names(dd) <- names(test9)
   test<-rbind(test9,dd)
 }
 test$sum_key_freq <- 0
@@ -215,6 +224,7 @@ if(length(test10$ID) != 0){
   
   test10$recommend_score<-paste(test10$recommend_score,"|",test10$sum_key_freq*3+test10$site_weigth,sep="")
   dd<-subset(test, !(test$ID %in% test10$ID))
+  names(dd) <- names(test10)
   test<-rbind(test10,dd)
 }
 test$sum_key_freq <- 0
@@ -229,6 +239,7 @@ if(length(test_other$ID) != 0){
   
   test_other$recommend_score<-paste(test_other$recommend_score,"|",test_other$sum_key_freq*3+test_other$site_weigth,sep="")
   dd<-subset(test, !(test$ID %in% test_other$ID))
+  names(dd) <- names(test_other)
   test<-rbind(test_other,dd)
 }
 test$sum_key_freq <- 0
@@ -244,6 +255,7 @@ if(length(test11$ID) != 0){
   
   test11$recommend_score<-paste(test11$recommend_score,"|",test11$sum_key_freq*3+test11$site_weigth,sep="")
   dd<-subset(test, !(test$ID %in% test11$ID))
+  names(dd) <- names(test11)
   test<-rbind(test11,dd)
 }
 
